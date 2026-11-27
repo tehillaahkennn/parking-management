@@ -9,10 +9,16 @@ use Illuminate\Http\Request;
 
 class VehicleController extends Controller
 {
-    // Display vehicles and search by plate number or owner.
+    /**
+     * Display vehicles with search and pagination.
+     */
     public function index(Request $request)
     {
-        $search = $request->input('search');
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:100',
+        ]);
+
+        $search = $validated['search'] ?? null;
 
         $vehicles = Vehicle::query()
             ->when($search, function ($query, $search) {
@@ -29,13 +35,17 @@ class VehicleController extends Controller
         return view('vehicles.index', compact('vehicles', 'search'));
     }
 
-    // Show the registration form.
+    /**
+     * Show the vehicle registration form.
+     */
     public function create()
     {
         return view('vehicles.create');
     }
 
-    // Save a new vehicle and record the audit log.
+    /**
+     * Register a vehicle and create an audit log.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -57,20 +67,41 @@ class VehicleController extends Controller
             ->with('success', 'Vehicle registered successfully.');
     }
 
-    // Show the edit form.
+    /**
+     * Show the vehicle edit form.
+     */
     public function edit(Vehicle $vehicle)
     {
         return view('vehicles.edit', compact('vehicle'));
     }
 
-    // Update an existing vehicle and record the audit log.
+    /**
+     * Update a vehicle while protecting its parking history.
+     */
     public function update(Request $request, Vehicle $vehicle)
     {
         $validated = $request->validate([
-            'plate_number' => 'required|string|max:20|unique:vehicles,plate_number,' . $vehicle->id,
+            'plate_number' => [
+                'required',
+                'string',
+                'max:20',
+                'unique:vehicles,plate_number,' . $vehicle->id,
+            ],
             'owner_name' => 'required|string|max:100',
             'vehicle_type' => 'required|in:Motorcycle,Car,Van',
         ]);
+
+        // Prevent changing vehicle type if parking history exists.
+        if (
+            $validated['vehicle_type'] !== $vehicle->vehicle_type
+            && $vehicle->parkingRecords()->exists()
+        ) {
+            return back()
+                ->withErrors([
+                    'vehicle_type' => 'Vehicle type cannot be changed because this vehicle has parking history.',
+                ])
+                ->withInput();
+        }
 
         $vehicle->update($validated);
 
@@ -85,8 +116,10 @@ class VehicleController extends Controller
             ->with('success', 'Vehicle updated successfully.');
     }
 
-    // Delete only vehicles that have no parking history.
-    public function destroy(Vehicle $vehicle)
+    /**
+     * Delete a vehicle only when it has no parking history.
+     */
+    public function destroy(Request $request, Vehicle $vehicle)
     {
         if ($vehicle->parkingRecords()->exists()) {
             return redirect()
@@ -102,6 +135,8 @@ class VehicleController extends Controller
         try {
             $vehicle->delete();
         } catch (QueryException $e) {
+            report($e);
+
             return redirect()
                 ->route('vehicles.index')
                 ->with(
@@ -111,7 +146,7 @@ class VehicleController extends Controller
         }
 
         AuditLogger::log(
-            request(),
+            $request,
             'DELETE',
             'Deleted vehicle: ' . $plateNumber
         );

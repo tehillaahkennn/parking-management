@@ -19,6 +19,10 @@
     $vehicleTypes = $parkingRecords->groupBy(
         fn ($record) => $record->vehicle?->vehicle_type ?? 'Unknown'
     );
+    <nav>
+        <a href="{{ route('parking.create') }}">Register Vehicle</a>
+        <a href="{{ route('parking-slots.index') }}">View Parking Slots</a>
+    </nav>
 
     $maxVehicleCount = max(
         1,

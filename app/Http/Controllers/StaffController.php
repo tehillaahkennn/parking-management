@@ -98,6 +98,36 @@ class StaffController extends Controller
             ->route('staff.index')
             ->with('success', 'Parking Staff account updated successfully.');
     }
+    
+public function toggleStatus(Request $request, User $staff)
+{
+    abort_unless($staff->role === 'Parking Staff', 404);
+
+    // Prevent the administrator from changing their own status.
+    if ($request->user()->id === $staff->id) {
+        return back()->with(
+            'error',
+            'You cannot change your own account status.'
+        );
+    }
+
+    DB::transaction(function () use ($staff, $request) {
+        $staff->is_active = ! $staff->is_active;
+        $staff->save();
+
+        AuditLogger::log(
+            $request,
+            $staff->is_active ? 'ACTIVATE' : 'DEACTIVATE',
+            ($staff->is_active ? 'Activated' : 'Deactivated')
+                . ' Parking Staff account: '
+                . $staff->name . ' (' . $staff->email . ')'
+        );
+    });
+
+    return redirect()
+        ->route('staff.index')
+        ->with('success', 'Staff account status updated successfully.');
+}
 
     public function destroy(Request $request, User $staff)
     {

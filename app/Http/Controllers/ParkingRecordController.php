@@ -2,23 +2,51 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\ParkingFeeStrategy;
 use App\Models\ParkingRecord;
 use App\Models\ParkingSlot;
 use App\Models\Vehicle;
 use App\Services\AuditLogger;
-use App\Services\ParkingFeeCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ParkingRecordController extends Controller
 {
-    public function index()
+    public function __construct(
+        private readonly ParkingFeeStrategy $feeCalculator
+    ) {}
+
+    public function index(Request $request)
     {
-        $parkingRecords = ParkingRecord::with([
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:100',
+            'status' => 'nullable|in:Parked,Completed',
+        ]);
+
+        $query = ParkingRecord::with([
             'vehicle',
             'parkingSlot',
-        ])->latest()->get();
+        ]);
+
+        if (!empty($validated['search'])) {
+            $search = $validated['search'];
+
+            $query->whereHas('vehicle', function ($vehicleQuery) use ($search) {
+                $vehicleQuery
+                    ->where('plate_number', 'like', "%{$search}%")
+                    ->orWhere('owner_name', 'like', "%{$search}%");
+            });
+        }
+
+        if (!empty($validated['status'])) {
+            $query->where('status', $validated['status']);
+        }
+
+        $parkingRecords = $query
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
 
         return view('parking.index', compact('parkingRecords'));
     }
@@ -48,7 +76,16 @@ class ParkingRecordController extends Controller
 
             if ($slot->status !== 'Available') {
                 throw ValidationException::withMessages([
-                    'parking_slot_id' => 'This parking slot is no longer available.',
+                    'parking_slot_id' =>
+                        'This parking slot is no longer available.',
+                ]);
+            }
+
+            // The vehicle type must match the selected slot type.
+            if ($slot->slot_type !== $validated['vehicle_type']) {
+                throw ValidationException::withMessages([
+                    'parking_slot_id' =>
+                        'The selected parking slot type must match the vehicle type.',
                 ]);
             }
 
@@ -100,23 +137,21 @@ class ParkingRecordController extends Controller
                 ]);
             }
 
+            $slot = ParkingSlot::whereKey($record->parking_slot_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $exitTime = now();
 
             $minutes = (int) $record->entry_time->diffInMinutes($exitTime);
 
-            // Calculate ₱20 per hour, rounded up, with a minimum charge of ₱20.
-            $fee = app(ParkingFeeCalculator::class)
-                ->calculate($minutes);
+            $fee = $this->feeCalculator->calculate($minutes);
 
             $record->update([
                 'exit_time' => $exitTime,
                 'parking_fee' => $fee,
                 'status' => 'Completed',
             ]);
-
-            $slot = ParkingSlot::whereKey($record->parking_slot_id)
-                ->lockForUpdate()
-                ->firstOrFail();
 
             $slot->update([
                 'status' => 'Available',
