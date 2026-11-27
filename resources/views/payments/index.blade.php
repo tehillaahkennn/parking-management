@@ -1,133 +1,197 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Management</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f9;
-            margin: 0;
-            padding: 25px;
+@extends('layouts.parking')
+
+@section('title', 'Payment Management | Parking Management System')
+
+@push('styles')
+<style>
+    .payment-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .payment-amount {
+        color: #13864e;
+        font-weight: bold;
+    }
+
+    .payment-method {
+        display: inline-block;
+        background: #eeeaff;
+        color: #6259ca;
+        padding: 6px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    .payment-table {
+        min-width: 850px;
+    }
+
+    @media (max-width: 420px) {
+        .payment-stats {
+            grid-template-columns: 1fr;
         }
-        .container {
-            max-width: 1100px;
-            margin: auto;
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-        }
-        h1 { color: #1f2937; }
-        .button {
-            display: inline-block;
-            background: #2563eb;
-            color: white;
-            padding: 10px 15px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-        .success {
-            background: #dcfce7;
-            color: #166534;
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-        input {
-            padding: 10px;
-            width: 260px;
-            max-width: 90%;
-            margin-bottom: 15px;
-        }
-        button {
-            padding: 10px 15px;
-            cursor: pointer;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 11px;
-            text-align: left;
-        }
-        th { background: #1f2937; color: white; }
-        .empty { text-align: center; padding: 20px; }
-        .nav { margin-bottom: 20px; }
-        .nav a { margin-right: 15px; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <div class="nav">
-        <a href="{{ route('parking.index') }}">Parking</a>
-        <a href="{{ route('vehicles.index') }}">Vehicles</a>
-        <a href="{{ route('parking-slots.index') }}">Parking Slots</a>
+    }
+</style>
+@endpush
+
+@section('content')
+
+<!-- PAGE HEADING -->
+<div class="welcome">
+    <div>
+        <h2>Payment Management</h2>
+        <p>View and manage completed parking payments.</p>
+    </div>
+</div>
+
+<!-- SUMMARY CARDS -->
+<div class="stats payment-stats">
+
+    <div class="stat-card blue">
+        <div class="stat-title">Total Payment Records</div>
+
+        <div class="stat-number">
+            {{ $payments->total() }}
+        </div>
+
+        <div class="stat-description">
+            All recorded payments
+        </div>
+
+        <div class="stat-decoration">₱</div>
     </div>
 
-    <h1>Payment Management</h1>
-    <p>View and manage completed parking payments.</p>
+    <div class="stat-card green">
+        <div class="stat-title">Total Amount on This Page</div>
 
-    @if (session('success'))
-        <div class="success">{{ session('success') }}</div>
-    @endif
+        <div class="stat-number">
+            ₱{{ number_format((float) $payments->sum('amount'), 2) }}
+        </div>
 
-    <a class="button" href="{{ route('payments.create') }}">
-        + Record Payment
-    </a>
+        <div class="stat-description">
+            Total amount from displayed records
+        </div>
 
-    <form method="GET" action="{{ route('payments.index') }}">
+        <div class="stat-decoration">✓</div>
+    </div>
+
+</div>
+
+<!-- PAYMENT RECORDS -->
+<div class="records-panel">
+
+    <div class="records-header">
+        <div>
+            <h3>Payment Records</h3>
+            <p class="panel-subtitle" style="margin: 6px 0 0;">
+                List of completed parking payments.
+            </p>
+        </div>
+
+        <a href="{{ route('payments.create') }}" class="primary-btn">
+            + Record Payment
+        </a>
+    </div>
+
+    <!-- SEARCH FORM -->
+    <form method="GET"
+          action="{{ route('payments.index') }}"
+          class="table-search">
+
         <input
             type="text"
             name="search"
-            placeholder="Search plate number or owner"
+            placeholder="Search plate number or owner..."
             value="{{ $search }}"
         >
-        <button type="submit">Search</button>
-        <a href="{{ route('payments.index') }}">Reset</a>
+
+        <button type="submit" class="primary-btn">
+            Search
+        </button>
+
+        <a href="{{ route('payments.index') }}"
+           class="secondary-btn">
+            Reset
+        </a>
+
     </form>
 
-    <table>
-        <thead>
-        <tr>
-            <th>Payment ID</th>
-            <th>Plate Number</th>
-            <th>Owner</th>
-            <th>Parking Slot</th>
-            <th>Amount</th>
-            <th>Method</th>
-            <th>Paid At</th>
-        </tr>
-        </thead>
-        <tbody>
-        @forelse ($payments as $payment)
-            <tr>
-                <td>{{ $payment->id }}</td>
-                <td>{{ $payment->parkingRecord->vehicle->plate_number }}</td>
-                <td>{{ $payment->parkingRecord->vehicle->owner_name }}</td>
-                <td>{{ $payment->parkingRecord->parkingSlot->slot_number }}</td>
-                <td>₱{{ number_format((float) $payment->amount, 2) }}</td>
-                <td>{{ $payment->payment_method }}</td>
-                <td>{{ $payment->paid_at->format('M d, Y h:i A') }}</td>
-            </tr>
-        @empty
-            <tr>
-                <td colspan="7" class="empty">
-                    No payments recorded yet.
-                </td>
-            </tr>
-        @endforelse
-        </tbody>
-    </table>
+    <!-- PAYMENT TABLE -->
+    <div class="table-wrapper">
 
-    <div style="margin-top: 20px;">
+        <table class="payment-table">
+
+            <thead>
+                <tr>
+                    <th>Payment ID</th>
+                    <th>Plate Number</th>
+                    <th>Owner</th>
+                    <th>Parking Slot</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Paid At</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                @forelse ($payments as $payment)
+
+                    <tr>
+                        <td>
+                            #{{ $payment->id }}
+                        </td>
+
+                        <td>
+                            {{ $payment->parkingRecord->vehicle->plate_number }}
+                        </td>
+
+                        <td>
+                            {{ $payment->parkingRecord->vehicle->owner_name }}
+                        </td>
+
+                        <td>
+                            {{ $payment->parkingRecord->parkingSlot->slot_number }}
+                        </td>
+
+                        <td class="payment-amount">
+                            ₱{{ number_format((float) $payment->amount, 2) }}
+                        </td>
+
+                        <td>
+                            <span class="payment-method">
+                                {{ $payment->payment_method }}
+                            </span>
+                        </td>
+
+                        <td>
+                            {{ $payment->paid_at->format('M d, Y h:i A') }}
+                        </td>
+                    </tr>
+
+                @empty
+
+                    <tr>
+                        <td colspan="7" class="empty">
+                            No payments recorded yet.
+                        </td>
+                    </tr>
+
+                @endforelse
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="pagination-wrapper">
         {{ $payments->links() }}
     </div>
+
 </div>
-</body>
-</html>
+
+@endsection
