@@ -1,98 +1,154 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Parking Slots - Parking Management System</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 30px;
-            background: #f8fafc;
-            color: #1e293b;
-        }
-        h1, h2 { color: #1e3a5f; }
-        nav { margin-bottom: 24px; }
-        nav a { margin-right: 14px; }
-        a { color: #2563eb; }
-        button {
-            padding: 8px 14px;
-            cursor: pointer;
-        }
-        .info {
-            margin: 16px 0;
-            padding: 14px;
-            background: #e2e8f0;
-            border-radius: 6px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-        th, td {
-            border: 1px solid #cbd5e1;
-            padding: 12px;
-            text-align: left;
-        }
-        th { background: #e2e8f0; }
-        .available { color: #15803d; font-weight: bold; }
-        .occupied { color: #b91c1c; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <h1>Parking Management System</h1>
-    <h2>Parking Slots</h2>
+﻿
+@extends('layouts.parking')
 
-    @auth
-        <div class="info">
-            Logged in as:
-            <strong>{{ auth()->user()->name }}</strong>
-            ({{ auth()->user()->role }})
+@section('title', 'Parking Slots | Parking Management System')
 
-            <form action="{{ route('logout') }}" method="POST"
-                  style="display:inline; margin-left:15px;">
-                @csrf
-                <button type="submit">Logout</button>
-            </form>
+@push('styles')
+<style>
+    .stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .slot-number {
+        font-weight: bold;
+        color: #172b4d;
+    }
+
+    .slot-type {
+        color: #52617c;
+    }
+
+    @media (max-width: 768px) {
+        .stats {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 420px) {
+        .stats {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+@endpush
+
+@section('content')
+
+@php
+    $totalSlots = $parkingSlots->count();
+
+    $availableSlots = $parkingSlots->where('status', 'Available')->count();
+
+    $occupiedSlots = $parkingSlots->where('status', 'Occupied')->count();
+@endphp
+
+<!-- PAGE HEADING -->
+<div class="welcome">
+    <div>
+        <h2>Parking Slots</h2>
+        <p>Manage and monitor all parking spaces in your parking area.</p>
+    </div>
+
+    <div>
+        <a href="{{ route('parking-slots.index') }}" class="secondary-btn">
+            ↻ Refresh
+        </a>
+    </div>
+</div>
+
+<!-- SUMMARY CARDS -->
+<div class="stats">
+
+    <div class="stat-card blue">
+        <div class="stat-title">Total Parking Slots</div>
+        <div class="stat-number">{{ $totalSlots }}</div>
+        <div class="stat-description">All registered parking spaces</div>
+        <div class="stat-decoration">▤</div>
+    </div>
+
+    <div class="stat-card green">
+        <div class="stat-title">Available Slots</div>
+        <div class="stat-number">{{ $availableSlots }}</div>
+        <div class="stat-description">Slots ready for vehicles</div>
+        <div class="stat-decoration">✓</div>
+    </div>
+
+    <div class="stat-card pink">
+        <div class="stat-title">Occupied Slots</div>
+        <div class="stat-number">{{ $occupiedSlots }}</div>
+        <div class="stat-description">Currently occupied spaces</div>
+        <div class="stat-decoration">🚘</div>
+    </div>
+
+</div>
+
+<!-- PARKING SLOTS TABLE -->
+<div class="records-panel">
+
+    <div class="records-header">
+        <div>
+            <h3>Parking Slot List</h3>
+            <p class="panel-subtitle" style="margin: 6px 0 0;">
+                View the current status of every parking slot.
+            </p>
         </div>
-    @endauth
 
-    <nav>
-        <a href="{{ route('parking.index') }}">Parking Records</a>
-        <a href="{{ route('parking.create') }}">Register Vehicle</a>
-        <a href="{{ route('parking-slots.index') }}">Refresh Slots</a>
-    </nav>
+        <span class="badge badge-neutral">
+            {{ $totalSlots }} Total Slots
+        </span>
+    </div>
 
-    <p>View the current availability and type of each parking slot.</p>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Slot ID</th>
-                <th>Slot Number</th>
-                <th>Slot Type</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse ($parkingSlots as $slot)
+    <div class="table-wrapper">
+        <table>
+            <thead>
                 <tr>
-                    <td>{{ $slot->id }}</td>
-                    <td>{{ $slot->slot_number }}</td>
-                    <td>{{ $slot->slot_type }}</td>
-                    <td class="{{ $slot->status === 'Available' ? 'available' : 'occupied' }}">
-                        {{ $slot->status }}
-                    </td>
+                    <th>#</th>
+                    <th>Slot Number</th>
+                    <th>Vehicle Type</th>
+                    <th>Status</th>
                 </tr>
-            @empty
-                <tr>
-                    <td colspan="4">No parking slots found.</td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
+            </thead>
 
-    <p>Total parking slots: {{ $parkingSlots->count() }}</p>
-</body>
-</html>
+            <tbody>
+                @forelse ($parkingSlots as $slot)
+                    <tr>
+                        <td>{{ $loop->iteration }}</td>
+
+                        <td>
+                            <span class="slot-number">
+                                {{ $slot->slot_number }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="slot-type">
+                                {{ $slot->slot_type }}
+                            </span>
+                        </td>
+
+                        <td>
+                            @if ($slot->status === 'Available')
+                                <span class="badge badge-available">
+                                    Available
+                                </span>
+                            @else
+                                <span class="badge badge-occupied">
+                                    Occupied
+                                </span>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="4" class="empty">
+                            No parking slots found.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+@endsection

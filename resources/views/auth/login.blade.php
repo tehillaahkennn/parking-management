@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,6 +106,23 @@
             font-size: 14px;
         }
 
+        .auth-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .auth-link a {
+            color: #1d4ed8;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .auth-link a:hover {
+            text-decoration: underline;
+        }
+
         .footer {
             text-align: center;
             color: #94a3b8;
@@ -162,6 +178,10 @@
 
             <button type="submit">Sign In</button>
         </form>
+
+        <div class="auth-link">
+            Don't have an account? <a href="{{ route('register') }}">Register here</a>
+        </div>
 
         <div class="footer">
             Parking Management System &copy; {{ date('Y') }}
