@@ -29,22 +29,20 @@ class ParkingRecordController extends Controller
             'parkingSlot',
         ]);
 
-        // Search by plate number or vehicle owner.
         if (!empty($validated['search'])) {
             $search = $validated['search'];
 
             $query->whereHas('vehicle', function ($vehicleQuery) use ($search) {
-                $vehicleQuery->where('plate_number', 'like', "%{$search}%")
+                $vehicleQuery
+                    ->where('plate_number', 'like', "%{$search}%")
                     ->orWhere('owner_name', 'like', "%{$search}%");
             });
         }
 
-        // Filter by parking record status.
         if (!empty($validated['status'])) {
             $query->where('status', $validated['status']);
         }
 
-        // Display 10 records per page and preserve filters.
         $parkingRecords = $query
             ->latest()
             ->paginate(10)
@@ -78,7 +76,16 @@ class ParkingRecordController extends Controller
 
             if ($slot->status !== 'Available') {
                 throw ValidationException::withMessages([
-                    'parking_slot_id' => 'This parking slot is no longer available.',
+                    'parking_slot_id' =>
+                        'This parking slot is no longer available.',
+                ]);
+            }
+
+            // The vehicle type must match the selected slot type.
+            if ($slot->slot_type !== $validated['vehicle_type']) {
+                throw ValidationException::withMessages([
+                    'parking_slot_id' =>
+                        'The selected parking slot type must match the vehicle type.',
                 ]);
             }
 
@@ -130,6 +137,10 @@ class ParkingRecordController extends Controller
                 ]);
             }
 
+            $slot = ParkingSlot::whereKey($record->parking_slot_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $exitTime = now();
 
             $minutes = (int) $record->entry_time->diffInMinutes($exitTime);
@@ -141,10 +152,6 @@ class ParkingRecordController extends Controller
                 'parking_fee' => $fee,
                 'status' => 'Completed',
             ]);
-
-            $slot = ParkingSlot::whereKey($record->parking_slot_id)
-                ->lockForUpdate()
-                ->firstOrFail();
 
             $slot->update([
                 'status' => 'Available',

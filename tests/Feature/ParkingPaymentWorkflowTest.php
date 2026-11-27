@@ -21,8 +21,7 @@ class ParkingPaymentWorkflowTest extends TestCase
         parent::setUp();
 
         /*
-         * The current parking migrations describe an older schema.
-         * Build the tables needed by this workflow test in SQLite.
+         * Build the workflow tables needed by these SQLite tests.
          */
         Schema::dropIfExists('payments');
         Schema::dropIfExists('parking_records');
@@ -96,251 +95,322 @@ class ParkingPaymentWorkflowTest extends TestCase
         $this->assertDatabaseMissing('payments', [
             'parking_record_id' => $record->id,
         ]);
-    
-    } public function test_completed_parking_record_can_be_paid(): void
-{
-    $user = User::factory()->create([
-        'role' => 'Admin',
-    ]);
+    }
 
-    $slot = ParkingSlot::create([
-        'slot_number' => 'TEST-02',
-        'slot_type' => 'Car',
-        'status' => 'Available',
-    ]);
+    public function test_completed_parking_record_can_be_paid(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'Admin',
+        ]);
 
-    $vehicle = Vehicle::create([
-        'plate_number' => 'TEST456',
-        'owner_name' => 'Test Owner',
-        'vehicle_type' => 'Car',
-    ]);
+        $slot = ParkingSlot::create([
+            'slot_number' => 'TEST-02',
+            'slot_type' => 'Car',
+            'status' => 'Available',
+        ]);
 
-    $record = ParkingRecord::create([
-        'vehicle_id' => $vehicle->id,
-        'parking_slot_id' => $slot->id,
-        'entry_time' => now()->subHour(),
-        'exit_time' => now(),
-        'parking_fee' => 20,
-        'status' => 'Completed',
-    ]);
+        $vehicle = Vehicle::create([
+            'plate_number' => 'TEST456',
+            'owner_name' => 'Test Owner',
+            'vehicle_type' => 'Car',
+        ]);
 
-    $response = $this->actingAs($user)->post('/payments', [
-        'parking_record_id' => $record->id,
-        'payment_method' => 'Cash',
-    ]);
+        $record = ParkingRecord::create([
+            'vehicle_id' => $vehicle->id,
+            'parking_slot_id' => $slot->id,
+            'entry_time' => now()->subHour(),
+            'exit_time' => now(),
+            'parking_fee' => 20,
+            'status' => 'Completed',
+        ]);
 
-    $response->assertRedirect(route('payments.index'));
+        $response = $this->actingAs($user)->post('/payments', [
+            'parking_record_id' => $record->id,
+            'payment_method' => 'Cash',
+        ]);
 
-    $this->assertDatabaseHas('payments', [
-        'parking_record_id' => $record->id,
-        'payment_method' => 'Cash',
-        'amount' => 20,
-    ]);
+        $response->assertRedirect(route('payments.index'));
+
+        $this->assertDatabaseHas('payments', [
+            'parking_record_id' => $record->id,
+            'payment_method' => 'Cash',
+            'amount' => 20,
+        ]);
+    }
+
+    public function test_duplicate_payment_is_rejected(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'Admin',
+        ]);
+
+        $slot = ParkingSlot::create([
+            'slot_number' => 'TEST-03',
+            'slot_type' => 'Car',
+            'status' => 'Available',
+        ]);
+
+        $vehicle = Vehicle::create([
+            'plate_number' => 'TEST789',
+            'owner_name' => 'Test Owner',
+            'vehicle_type' => 'Car',
+        ]);
+
+        $record = ParkingRecord::create([
+            'vehicle_id' => $vehicle->id,
+            'parking_slot_id' => $slot->id,
+            'entry_time' => now()->subHour(),
+            'exit_time' => now(),
+            'parking_fee' => 20,
+            'status' => 'Completed',
+        ]);
+
+        Payment::create([
+            'parking_record_id' => $record->id,
+            'amount' => 20,
+            'payment_method' => 'Cash',
+            'paid_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->post('/payments', [
+            'parking_record_id' => $record->id,
+            'payment_method' => 'GCash',
+        ]);
+
+        $response->assertSessionHasErrors('parking_record_id');
+
+        $this->assertDatabaseCount('payments', 1);
+    }
+
+    public function test_vehicle_can_check_in_to_an_available_slot(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'Admin',
+        ]);
+
+        $slot = ParkingSlot::create([
+            'slot_number' => 'CHECKIN-01',
+            'slot_type' => 'Car',
+            'status' => 'Available',
+        ]);
+
+        $response = $this->actingAs($user)->post('/parking', [
+            'plate_number' => 'CHK1001',
+            'owner_name' => 'Check-in Test',
+            'vehicle_type' => 'Car',
+            'parking_slot_id' => $slot->id,
+        ]);
+
+        $response->assertRedirect(route('parking.index'));
+
+        $this->assertDatabaseHas('vehicles', [
+            'plate_number' => 'CHK1001',
+            'owner_name' => 'Check-in Test',
+        ]);
+
+        $this->assertDatabaseHas('parking_records', [
+            'parking_slot_id' => $slot->id,
+            'status' => 'Parked',
+        ]);
+
+        $this->assertDatabaseHas('parking_slots', [
+            'id' => $slot->id,
+            'status' => 'Occupied',
+        ]);
+    }
+
+    public function test_vehicle_cannot_check_in_to_an_occupied_slot(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'Admin',
+        ]);
+
+        $slot = ParkingSlot::create([
+            'slot_number' => 'CHECKIN-02',
+            'slot_type' => 'Car',
+            'status' => 'Occupied',
+        ]);
+
+        $response = $this->actingAs($user)->post('/parking', [
+            'plate_number' => 'CHK1002',
+            'owner_name' => 'Occupied Slot Test',
+            'vehicle_type' => 'Car',
+            'parking_slot_id' => $slot->id,
+        ]);
+
+        $response->assertSessionHasErrors('parking_slot_id');
+
+        $this->assertDatabaseMissing('vehicles', [
+            'plate_number' => 'CHK1002',
+        ]);
+
+        $this->assertDatabaseHas('parking_slots', [
+            'id' => $slot->id,
+            'status' => 'Occupied',
+        ]);
+    }
+
+    public function test_vehicle_cannot_check_in_to_mismatched_slot_type(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'Admin',
+        ]);
+
+        $slot = ParkingSlot::create([
+            'slot_number' => 'TYPECHECK-01',
+            'slot_type' => 'Motorcycle',
+            'status' => 'Available',
+        ]);
+
+        $response = $this->actingAs($user)->post('/parking', [
+            'plate_number' => 'TYPE1001',
+            'owner_name' => 'Type Mismatch Test',
+            'vehicle_type' => 'Car',
+            'parking_slot_id' => $slot->id,
+        ]);
+
+        $response->assertSessionHasErrors('parking_slot_id');
+
+        $this->assertDatabaseMissing('vehicles', [
+            'plate_number' => 'TYPE1001',
+        ]);
+
+        $this->assertDatabaseMissing('parking_records', [
+            'parking_slot_id' => $slot->id,
+        ]);
+
+        $this->assertDatabaseHas('parking_slots', [
+            'id' => $slot->id,
+            'status' => 'Available',
+        ]);
+    }
+
+    public function test_vehicle_can_check_in_when_slot_type_matches(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'Admin',
+        ]);
+
+        $slot = ParkingSlot::create([
+            'slot_number' => 'TYPECHECK-02',
+            'slot_type' => 'Motorcycle',
+            'status' => 'Available',
+        ]);
+
+        $response = $this->actingAs($user)->post('/parking', [
+            'plate_number' => 'TYPE1002',
+            'owner_name' => 'Matching Type Test',
+            'vehicle_type' => 'Motorcycle',
+            'parking_slot_id' => $slot->id,
+        ]);
+
+        $response->assertRedirect(route('parking.index'));
+
+        $this->assertDatabaseHas('vehicles', [
+            'plate_number' => 'TYPE1002',
+            'vehicle_type' => 'Motorcycle',
+        ]);
+
+        $this->assertDatabaseHas('parking_records', [
+            'parking_slot_id' => $slot->id,
+            'status' => 'Parked',
+        ]);
+
+        $this->assertDatabaseHas('parking_slots', [
+            'id' => $slot->id,
+            'status' => 'Occupied',
+        ]);
+    }
+
+    public function test_checkout_completes_parking_and_releases_slot(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'Admin',
+        ]);
+
+        $slot = ParkingSlot::create([
+            'slot_number' => 'CHECKOUT-01',
+            'slot_type' => 'Car',
+            'status' => 'Occupied',
+        ]);
+
+        $vehicle = Vehicle::create([
+            'plate_number' => 'OUT1001',
+            'owner_name' => 'Checkout Test',
+            'vehicle_type' => 'Car',
+        ]);
+
+        $record = ParkingRecord::create([
+            'vehicle_id' => $vehicle->id,
+            'parking_slot_id' => $slot->id,
+            'entry_time' => now()->subMinutes(61),
+            'parking_fee' => 0,
+            'status' => 'Parked',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->patch("/parking/{$record->id}/checkout");
+
+        $response->assertRedirect(route('parking.index'));
+
+        $this->assertDatabaseHas('parking_records', [
+            'id' => $record->id,
+            'status' => 'Completed',
+            'parking_fee' => 40,
+        ]);
+
+        $this->assertDatabaseHas('parking_slots', [
+            'id' => $slot->id,
+            'status' => 'Available',
+        ]);
+
+        $this->assertNotNull(
+            $record->fresh()->exit_time,
+            'Checkout should record the exit time.'
+        );
+    }
+
+    public function test_completed_parking_record_cannot_be_checked_out_twice(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'Admin',
+        ]);
+
+        $slot = ParkingSlot::create([
+            'slot_number' => 'CHECKOUT-02',
+            'slot_type' => 'Car',
+            'status' => 'Available',
+        ]);
+
+        $vehicle = Vehicle::create([
+            'plate_number' => 'OUT1002',
+            'owner_name' => 'Double Checkout Test',
+            'vehicle_type' => 'Car',
+        ]);
+
+        $record = ParkingRecord::create([
+            'vehicle_id' => $vehicle->id,
+            'parking_slot_id' => $slot->id,
+            'entry_time' => now()->subHour(),
+            'exit_time' => now(),
+            'parking_fee' => 20,
+            'status' => 'Completed',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->patch("/parking/{$record->id}/checkout");
+
+        $response->assertSessionHasErrors();
+
+        $this->assertDatabaseHas('parking_records', [
+            'id' => $record->id,
+            'status' => 'Completed',
+            'parking_fee' => 20,
+        ]);
+
+        $this->assertDatabaseHas('parking_slots', [
+            'id' => $slot->id,
+            'status' => 'Available',
+        ]);
+    }
 }
-
-public function test_duplicate_payment_is_rejected(): void
-{
-    $user = User::factory()->create([
-        'role' => 'Admin',
-    ]);
-
-    $slot = ParkingSlot::create([
-        'slot_number' => 'TEST-03',
-        'slot_type' => 'Car',
-        'status' => 'Available',
-    ]);
-
-    $vehicle = Vehicle::create([
-        'plate_number' => 'TEST789',
-        'owner_name' => 'Test Owner',
-        'vehicle_type' => 'Car',
-    ]);
-
-    $record = ParkingRecord::create([
-        'vehicle_id' => $vehicle->id,
-        'parking_slot_id' => $slot->id,
-        'entry_time' => now()->subHour(),
-        'exit_time' => now(),
-        'parking_fee' => 20,
-        'status' => 'Completed',
-    ]);
-
-    Payment::create([
-        'parking_record_id' => $record->id,
-        'amount' => 20,
-        'payment_method' => 'Cash',
-        'paid_at' => now(),
-    ]);
-
-    $response = $this->actingAs($user)->post('/payments', [
-        'parking_record_id' => $record->id,
-        'payment_method' => 'GCash',
-    ]);
-
-    $response->assertSessionHasErrors('parking_record_id');
-
-    $this->assertDatabaseCount('payments', 1);
-}
-
-public function test_vehicle_can_check_in_to_an_available_slot(): void
-{
-    $user = User::factory()->create([
-        'role' => 'Admin',
-    ]);
-
-    $slot = ParkingSlot::create([
-        'slot_number' => 'CHECKIN-01',
-        'slot_type' => 'Car',
-        'status' => 'Available',
-    ]);
-
-    $response = $this->actingAs($user)->post('/parking', [
-        'plate_number' => 'CHK1001',
-        'owner_name' => 'Check-in Test',
-        'vehicle_type' => 'Car',
-        'parking_slot_id' => $slot->id,
-    ]);
-
-    $response->assertRedirect(route('parking.index'));
-
-    $this->assertDatabaseHas('vehicles', [
-        'plate_number' => 'CHK1001',
-        'owner_name' => 'Check-in Test',
-    ]);
-
-    $this->assertDatabaseHas('parking_records', [
-        'parking_slot_id' => $slot->id,
-        'status' => 'Parked',
-    ]);
-
-    $this->assertDatabaseHas('parking_slots', [
-        'id' => $slot->id,
-        'status' => 'Occupied',
-    ]);
-}
-
-public function test_vehicle_cannot_check_in_to_an_occupied_slot(): void
-{
-    $user = User::factory()->create([
-        'role' => 'Admin',
-    ]);
-
-    $slot = ParkingSlot::create([
-        'slot_number' => 'CHECKIN-02',
-        'slot_type' => 'Car',
-        'status' => 'Occupied',
-    ]);
-
-    $response = $this->actingAs($user)->post('/parking', [
-        'plate_number' => 'CHK1002',
-        'owner_name' => 'Occupied Slot Test',
-        'vehicle_type' => 'Car',
-        'parking_slot_id' => $slot->id,
-    ]);
-
-    $response->assertSessionHasErrors('parking_slot_id');
-
-    $this->assertDatabaseMissing('vehicles', [
-        'plate_number' => 'CHK1002',
-    ]);
-
-    $this->assertDatabaseHas('parking_slots', [
-        'id' => $slot->id,
-        'status' => 'Occupied',
-    ]);
-}
-
-public function test_checkout_completes_parking_and_releases_slot(): void
-{
-    $user = User::factory()->create([
-        'role' => 'Admin',
-    ]);
-
-    $slot = ParkingSlot::create([
-        'slot_number' => 'CHECKOUT-01',
-        'slot_type' => 'Car',
-        'status' => 'Occupied',
-    ]);
-
-    $vehicle = Vehicle::create([
-        'plate_number' => 'OUT1001',
-        'owner_name' => 'Checkout Test',
-        'vehicle_type' => 'Car',
-    ]);
-
-    $record = ParkingRecord::create([
-        'vehicle_id' => $vehicle->id,
-        'parking_slot_id' => $slot->id,
-        'entry_time' => now()->subMinutes(61),
-        'parking_fee' => 0,
-        'status' => 'Parked',
-    ]);
-
-    $response = $this->actingAs($user)
-        ->patch("/parking/{$record->id}/checkout");
-
-    $response->assertRedirect(route('parking.index'));
-
-    $this->assertDatabaseHas('parking_records', [
-        'id' => $record->id,
-        'status' => 'Completed',
-        'parking_fee' => 40,
-    ]);
-
-    $this->assertDatabaseHas('parking_slots', [
-        'id' => $slot->id,
-        'status' => 'Available',
-    ]);
-
-    $this->assertNotNull(
-        $record->fresh()->exit_time,
-        'Checkout should record the exit time.'
-    );
-}
-
-public function test_completed_parking_record_cannot_be_checked_out_twice(): void
-{
-    $user = User::factory()->create([
-        'role' => 'Admin',
-    ]);
-
-    $slot = ParkingSlot::create([
-        'slot_number' => 'CHECKOUT-02',
-        'slot_type' => 'Car',
-        'status' => 'Available',
-    ]);
-
-    $vehicle = Vehicle::create([
-        'plate_number' => 'OUT1002',
-        'owner_name' => 'Double Checkout Test',
-        'vehicle_type' => 'Car',
-    ]);
-
-    $record = ParkingRecord::create([
-        'vehicle_id' => $vehicle->id,
-        'parking_slot_id' => $slot->id,
-        'entry_time' => now()->subHour(),
-        'exit_time' => now(),
-        'parking_fee' => 20,
-        'status' => 'Completed',
-    ]);
-
-    $response = $this->actingAs($user)
-        ->patch("/parking/{$record->id}/checkout");
-
-    $response->assertSessionHasErrors();
-
-    $this->assertDatabaseHas('parking_records', [
-        'id' => $record->id,
-        'status' => 'Completed',
-        'parking_fee' => 20,
-    ]);
-
-    $this->assertDatabaseHas('parking_slots', [
-        'id' => $slot->id,
-        'status' => 'Available',
-    ]);
-}
-
-}
-

@@ -51,7 +51,7 @@ Route::middleware('auth')->group(function () {
             [ParkingRecordController::class, 'show']
         )->name('parking.show');
 
-        // Parking slots
+        // Parking slots: Admin and Parking Staff can view
         Route::get('/parking-slots', [ParkingSlotController::class, 'index'])
             ->name('parking-slots.index');
 
@@ -93,6 +93,22 @@ Route::middleware('auth')->group(function () {
 
     // Admin only
     Route::middleware('role:Admin')->group(function () {
+
+        // Parking slot management
+        Route::get('/parking-slots/create', [ParkingSlotController::class, 'create'])
+            ->name('parking-slots.create');
+
+        Route::post('/parking-slots', [ParkingSlotController::class, 'store'])
+            ->name('parking-slots.store');
+
+        Route::get('/parking-slots/{parkingSlot}/edit', [ParkingSlotController::class, 'edit'])
+            ->name('parking-slots.edit');
+
+        Route::put('/parking-slots/{parkingSlot}', [ParkingSlotController::class, 'update'])
+            ->name('parking-slots.update');
+
+        Route::delete('/parking-slots/{parkingSlot}', [ParkingSlotController::class, 'destroy'])
+            ->name('parking-slots.destroy');
 
         // Staff account management
         Route::resource('staff', StaffController::class)
