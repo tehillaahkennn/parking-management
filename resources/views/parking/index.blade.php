@@ -1,4 +1,4 @@
-
+﻿
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -638,13 +638,13 @@
     $vehicleTypes = $parkingRecords->groupBy(
         fn ($record) => $record->vehicle?->vehicle_type ?? 'Unknown'
     );
-    <nav>
-        <a href="{{ route('parking.create') }}">Register Vehicle</a>
-        <a href="{{ route('parking-slots.index') }}">View Parking Slots</a>
-    </nav>
-
     $maxVehicleCount = max(1, $vehicleTypes->map->count()->max() ?? 1);
 @endphp
+
+<nav>
+    <a href="{{ route('parking.create') }}">Register Vehicle</a>
+    <a href="{{ route('parking-slots.index') }}">View Parking Slots</a>
+</nav>
 
 <div class="layout">
 
@@ -652,7 +652,7 @@
     <aside class="sidebar">
 
         <div class="logo">
-            <span>🅿 PARKING SYSTEM</span>
+            <span>PARKING SYSTEM</span>
         </div>
 
         <nav class="menu">
@@ -660,29 +660,29 @@
             <div class="menu-title">Main</div>
 
             <a href="{{ route('parking.index') }}" class="active">
-                <span class="menu-icon">▦</span>
+                <span class="menu-icon">&#9632;</span>
                 Dashboard
             </a>
 
             <div class="menu-title">Parking Management</div>
 
             <a href="{{ route('parking.create') }}">
-                <span class="menu-icon">🚘</span>
+                <span class="menu-icon">&#128664;</span>
                 Register Vehicle
             </a>
 
             <a href="{{ route('parking-slots.index') }}">
-                <span class="menu-icon">▤</span>
+                <span class="menu-icon">&#9633;</span>
                 Parking Slots
             </a>
 
             <a href="{{ route('vehicles.index') }}">
-                <span class="menu-icon">🚗</span>
+                <span class="menu-icon">&#128663;</span>
                 Vehicles
             </a>
 
             <a href="{{ route('payments.index') }}">
-                <span class="menu-icon">₱</span>
+                <span class="menu-icon">&#8369;</span>
                 Payments
             </a>
 
@@ -691,17 +691,17 @@
                 <div class="menu-title">Administration</div>
 
                 <a href="{{ route('staff.index') }}">
-                    <span class="menu-icon">♙</span>
+                    <span class="menu-icon">&#9824;</span>
                     Staff Management
                 </a>
 
                 <a href="{{ route('reports.index') }}">
-                    <span class="menu-icon">▥</span>
+                    <span class="menu-icon">&#9632;</span>
                     Reports
                 </a>
 
                 <a href="{{ route('audit-logs.index') }}">
-                    <span class="menu-icon">▣</span>
+                    <span class="menu-icon">&#9633;</span>
                     Audit Logs
                 </a>
 
@@ -791,30 +791,30 @@
                     <div class="stat-title">Total Parking Records</div>
                     <div class="stat-number">{{ $totalRecords }}</div>
                     <div class="stat-description">Records currently displayed</div>
-                    <div class="stat-decoration">▦</div>
+                    <div class="stat-decoration">&#9632;</div>
                 </div>
 
                 <div class="stat-card pink">
                     <div class="stat-title">Currently Parked</div>
                     <div class="stat-number">{{ $parkedCount }}</div>
                     <div class="stat-description">Vehicles still inside</div>
-                    <div class="stat-decoration">🚘</div>
+                    <div class="stat-decoration">&#128664;</div>
                 </div>
 
                 <div class="stat-card green">
                     <div class="stat-title">Completed Records</div>
                     <div class="stat-number">{{ $completedCount }}</div>
                     <div class="stat-description">Vehicles checked out</div>
-                    <div class="stat-decoration">✓</div>
+                    <div class="stat-decoration">&#10003;</div>
                 </div>
 
                 <div class="stat-card orange">
                     <div class="stat-title">Total Parking Fees</div>
                     <div class="stat-number">
-                        ₱{{ number_format((float) $totalFees, 2) }}
+                        &#8369;{{ number_format((float) $totalFees, 2) }}
                     </div>
                     <div class="stat-description">Fees in displayed records</div>
-                    <div class="stat-decoration">₱</div>
+                    <div class="stat-decoration">&#8369;</div>
                 </div>
 
             </div>
@@ -1073,7 +1073,7 @@
             </div>
 
             <div class="footer">
-                Parking Management System © {{ now()->year }}
+                Parking Management System &copy; {{ now()->year }}
             </div>
 
         </section>
@@ -1084,3 +1084,4 @@
 
 </body>
 </html>
+
