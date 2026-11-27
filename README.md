@@ -95,7 +95,7 @@ The parking fee calculator uses the following rules:
 
 **Formula:**
 
-`Parking Fee = max(1, ceiling(Parking Duration in Minutes / 60)) × PHP 20`
+`Parking Fee = max(1, ceiling(Parking Duration in Minutes / 60)) * PHP 20`
 
 The standard parking fee calculator uses a rate of PHP 20 per hour. A separate discounted calculator demonstrates the fee strategy design and is not the default checkout calculator.
 
@@ -115,7 +115,7 @@ The standard parking fee calculator uses a rate of PHP 20 per hour. A separate d
 Replace the placeholder with the actual GitHub repository URL.
 
 ```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
+git clone https://github.com/tehillaahkennn/parking-management.git
 cd parking-management
 ```
 
