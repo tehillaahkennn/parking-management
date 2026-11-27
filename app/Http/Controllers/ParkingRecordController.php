@@ -17,12 +17,38 @@ class ParkingRecordController extends Controller
         private readonly ParkingFeeStrategy $feeCalculator
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $parkingRecords = ParkingRecord::with([
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:100',
+            'status' => 'nullable|in:Parked,Completed',
+        ]);
+
+        $query = ParkingRecord::with([
             'vehicle',
             'parkingSlot',
-        ])->latest()->get();
+        ]);
+
+        // Search by plate number or vehicle owner.
+        if (!empty($validated['search'])) {
+            $search = $validated['search'];
+
+            $query->whereHas('vehicle', function ($vehicleQuery) use ($search) {
+                $vehicleQuery->where('plate_number', 'like', "%{$search}%")
+                    ->orWhere('owner_name', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by parking record status.
+        if (!empty($validated['status'])) {
+            $query->where('status', $validated['status']);
+        }
+
+        // Display 10 records per page and preserve filters.
+        $parkingRecords = $query
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
 
         return view('parking.index', compact('parkingRecords'));
     }
