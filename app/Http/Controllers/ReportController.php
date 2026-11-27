@@ -9,9 +9,22 @@ use Illuminate\Http\Request;
 class ReportController extends Controller
 {
     public function index()
-    {
-        return view('reports.index');
-    }
+{
+    $totalRecords = ParkingRecord::count();
+
+    $completedRecords = ParkingRecord::where('status', 'Completed')->count();
+
+    $currentlyParked = ParkingRecord::where('status', 'Parked')->count();
+
+    $totalRevenue = Payment::sum('amount');
+
+    return view('reports.index', compact(
+        'totalRecords',
+        'completedRecords',
+        'currentlyParked',
+        'totalRevenue'
+    ));
+}
 
     public function parking(Request $request)
     {
