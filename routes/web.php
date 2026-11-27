@@ -17,6 +17,9 @@ Route::post('/login', [AuthController::class, 'login'])
     ->name('login.submit')
     ->middleware('throttle:5,1');
 
+Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+Route::post('/register', [AuthController::class, 'register'])->name('register.submit');
+
 Route::middleware('auth')->group(function () {
 
     // Logout
