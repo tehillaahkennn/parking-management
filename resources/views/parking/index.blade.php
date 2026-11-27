@@ -396,6 +396,52 @@
         }
 
         .table-wrapper {
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Parking Management System</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            color: #222;
+        }
+
+        nav {
+            margin-bottom: 20px;
+        }
+
+        nav a {
+            margin-right: 12px;
+        }
+
+        .message {
+            padding: 10px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .success {
+            background: #e6f7e9;
+            color: #17652a;
+        }
+
+        .error {
+            background: #fdeaea;
+            color: #a32121;
+        }
+
+        .filters {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f4f4f4;
+        }
+
+        input, select, button {
+            padding: 7px;
+            margin: 4px 4px 4px 0;
+        }
+
+        .table-container {
             overflow-x: auto;
         }
 
@@ -540,6 +586,40 @@
 
             .logout-btn {
                 padding: 8px;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #eaeaea;
+        }
+
+        .pagination {
+            margin-top: 20px;
+        }
+
+        .pagination a,
+        .pagination span {
+            display: inline-block;
+            padding: 7px 11px;
+            margin: 2px;
+            border: 1px solid #ccc;
+            text-decoration: none;
+        }
+
+        .pagination .current {
+            background: #ddd;
+            font-weight: bold;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                margin: 12px;
             }
         }
     </style>
@@ -558,6 +638,10 @@
     $vehicleTypes = $parkingRecords->groupBy(
         fn ($record) => $record->vehicle?->vehicle_type ?? 'Unknown'
     );
+    <nav>
+        <a href="{{ route('parking.create') }}">Register Vehicle</a>
+        <a href="{{ route('parking-slots.index') }}">View Parking Slots</a>
+    </nav>
 
     $maxVehicleCount = max(1, $vehicleTypes->map->count()->max() ?? 1);
 @endphp

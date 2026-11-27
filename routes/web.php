@@ -1,4 +1,3 @@
-
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -23,9 +22,11 @@ Route::post('/register', [AuthController::class, 'register'])->name('register.su
 
 Route::middleware('auth')->group(function () {
 
+    // Logout
     Route::post('/logout', [AuthController::class, 'logout'])
         ->name('logout');
 
+    // Dashboard redirect
     Route::get('/', function () {
         return redirect()->route('parking.index');
     });
@@ -43,14 +44,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/parking', [ParkingRecordController::class, 'store'])
             ->name('parking.store');
 
-        Route::patch('/parking/{parkingRecord}/checkout',
+        Route::patch(
+            '/parking/{parkingRecord}/checkout',
             [ParkingRecordController::class, 'checkout']
         )->name('parking.checkout');
 
-        Route::get('/parking/{parkingRecord}', [ParkingRecordController::class, 'show'])
-            ->name('parking.show');
+        Route::get(
+            '/parking/{parkingRecord}',
+            [ParkingRecordController::class, 'show']
+        )->name('parking.show');
 
-        // Parking slots
+        // Parking slots: Admin and Parking Staff can view
         Route::get('/parking-slots', [ParkingSlotController::class, 'index'])
             ->name('parking-slots.index');
 
@@ -64,14 +68,20 @@ Route::middleware('auth')->group(function () {
         Route::post('/vehicles', [VehicleController::class, 'store'])
             ->name('vehicles.store');
 
-        Route::get('/vehicles/{vehicle}/edit', [VehicleController::class, 'edit'])
-            ->name('vehicles.edit');
+        Route::get(
+            '/vehicles/{vehicle}/edit',
+            [VehicleController::class, 'edit']
+        )->name('vehicles.edit');
 
-        Route::put('/vehicles/{vehicle}', [VehicleController::class, 'update'])
-            ->name('vehicles.update');
+        Route::put(
+            '/vehicles/{vehicle}',
+            [VehicleController::class, 'update']
+        )->name('vehicles.update');
 
-        Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])
-            ->name('vehicles.destroy');
+        Route::delete(
+            '/vehicles/{vehicle}',
+            [VehicleController::class, 'destroy']
+        )->name('vehicles.destroy');
 
         // Payments
         Route::get('/payments', [PaymentController::class, 'index'])
@@ -87,8 +97,33 @@ Route::middleware('auth')->group(function () {
     // Admin only
     Route::middleware('role:Admin')->group(function () {
 
-    // Staff account management - Admin only
-Route::resource('staff', StaffController::class)->except(['show']);
+        // Parking slot management
+        Route::get('/parking-slots/create', [ParkingSlotController::class, 'create'])
+            ->name('parking-slots.create');
+
+        Route::post('/parking-slots', [ParkingSlotController::class, 'store'])
+            ->name('parking-slots.store');
+
+        Route::get('/parking-slots/{parkingSlot}/edit', [ParkingSlotController::class, 'edit'])
+            ->name('parking-slots.edit');
+
+        Route::put('/parking-slots/{parkingSlot}', [ParkingSlotController::class, 'update'])
+            ->name('parking-slots.update');
+
+        Route::delete('/parking-slots/{parkingSlot}', [ParkingSlotController::class, 'destroy'])
+            ->name('parking-slots.destroy');
+
+        // Staff account management
+        Route::resource('staff', StaffController::class)
+            ->except(['show']);
+
+        // Activate or deactivate a staff account
+        Route::patch(
+            '/staff/{staff}/toggle-status',
+            [StaffController::class, 'toggleStatus']
+        )->name('staff.toggle-status');
+
+        // Reports
         Route::get('/reports', [ReportController::class, 'index'])
             ->name('reports.index');
 
@@ -98,8 +133,8 @@ Route::resource('staff', StaffController::class)->except(['show']);
         Route::get('/reports/payments', [ReportController::class, 'payments'])
             ->name('reports.payments');
 
+        // Audit logs
         Route::get('/audit-logs', [AuditLogController::class, 'index'])
-    ->middleware('role:Admin')
-    ->name('audit-logs.index');
+            ->name('audit-logs.index');
     });
 });
