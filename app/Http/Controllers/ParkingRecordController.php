@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\ParkingFeeStrategy;
 use App\Models\ParkingRecord;
 use App\Models\ParkingSlot;
 use App\Models\Vehicle;
 use App\Services\AuditLogger;
-use App\Services\ParkingFeeCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ParkingRecordController extends Controller
 {
+    public function __construct(
+        private readonly ParkingFeeStrategy $feeCalculator
+    ) {}
+
     public function index()
     {
         $parkingRecords = ParkingRecord::with([
@@ -104,9 +108,7 @@ class ParkingRecordController extends Controller
 
             $minutes = (int) $record->entry_time->diffInMinutes($exitTime);
 
-            // Calculate ₱20 per hour, rounded up, with a minimum charge of ₱20.
-            $fee = app(ParkingFeeCalculator::class)
-                ->calculate($minutes);
+            $fee = $this->feeCalculator->calculate($minutes);
 
             $record->update([
                 'exit_time' => $exitTime,
