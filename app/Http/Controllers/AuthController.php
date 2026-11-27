@@ -26,7 +26,8 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (Auth::attempt($credentials + ['is_active' => true])) {            $request->session()->regenerate();
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
 
             AuditLogger::log(
                 $request,
