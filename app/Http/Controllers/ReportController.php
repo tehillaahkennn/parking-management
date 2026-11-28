@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\ParkingRecord;
@@ -7,10 +6,21 @@ use App\Models\Payment;
 use Illuminate\Http\Request;
 
 class ReportController extends Controller
+
 {
     public function index()
     {
-        return view('reports.index');
+        $totalRecords = ParkingRecord::count();
+        $completedRecords = ParkingRecord::where('status', 'Completed')->count();
+        $currentlyParked = ParkingRecord::where('status', 'Parked')->count();
+        $totalRevenue = Payment::sum('amount');
+
+        return view('reports.index', compact(
+            'totalRecords',
+            'completedRecords',
+            'currentlyParked',
+            'totalRevenue'
+        ));
     }
 
     public function parking(Request $request)
@@ -20,10 +30,7 @@ class ReportController extends Controller
             'date_to' => 'nullable|date|after_or_equal:date_from',
         ]);
 
-        $records = ParkingRecord::with([
-            'vehicle',
-            'parkingSlot',
-        ])
+        $records = ParkingRecord::with(['vehicle', 'parkingSlot'])
             ->when($validated['date_from'] ?? null, function ($query, $date) {
                 $query->where('entry_time', '>=', $date . ' 00:00:00');
             })
@@ -46,7 +53,7 @@ class ReportController extends Controller
 
         $query = Payment::with([
             'parkingRecord.vehicle',
-            'parkingRecord.parkingSlot',
+            'parkingRecord.parkingSlot'
         ])
             ->when($validated['date_from'] ?? null, function ($query, $date) {
                 $query->where('paid_at', '>=', $date . ' 00:00:00');
@@ -57,8 +64,7 @@ class ReportController extends Controller
 
         $totalRevenue = (clone $query)->sum('amount');
 
-        $payments = $query
-            ->orderByDesc('paid_at')
+        $payments = $query->orderByDesc('paid_at')
             ->paginate(15)
             ->withQueryString();
 

@@ -1,90 +1,371 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Revenue Report</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #f4f6f9; padding: 25px; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 10px; }
-        input, button { padding: 9px; margin: 5px 5px 5px 0; }
-        button { cursor: pointer; }
-        .summary { background: #eff6ff; padding: 18px; border-radius: 8px; margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #1f2937; color: white; }
-        .print-button { background: #2563eb; color: white; border: 0; padding: 10px 15px; border-radius: 5px; }
-        @media print {
-            body { background: white; padding: 0; }
-            .container { max-width: none; padding: 0; }
-            .no-print { display: none !important; }
-            th { background: #eee !important; color: black !important; }
+@extends('layouts.parking')
+
+@section('title', 'Payment Report | Parking Management System')
+
+@section('content')
+
+<style>
+    .report-heading {
+        margin-bottom: 22px;
+    }
+
+    .report-heading h2 {
+        margin: 0 0 7px;
+        color: #172b4d;
+        font-size: 24px;
+    }
+
+    .report-heading p {
+        color: #7b8495;
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .summary-card,
+    .filter-panel,
+    .records-panel {
+        background: #fff;
+        border-radius: 12px;
+        padding: 22px;
+        margin-bottom: 22px;
+        box-shadow: 0 3px 15px rgba(0,0,0,.04);
+        border: 1px solid #edf0f5;
+    }
+
+    .summary-card {
+        max-width: 350px;
+        border-left: 4px solid #0866d9;
+    }
+
+    .summary-label {
+        color: #7b8495;
+        font-size: 13px;
+        margin-bottom: 10px;
+    }
+
+    .summary-amount {
+        color: #172b4d;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .filter-panel h3,
+    .records-header h3 {
+        margin: 0 0 18px;
+        color: #172b4d;
+        font-size: 17px;
+    }
+
+    .filter-form {
+        display: flex;
+        align-items: end;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        min-width: 190px;
+    }
+
+    .filter-group label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #526078;
+    }
+
+    .filter-group input {
+        padding: 10px 12px;
+        border: 1px solid #dce2ec;
+        border-radius: 7px;
+        font-size: 13px;
+        outline: none;
+    }
+
+    .filter-group input:focus {
+        border-color: #0866d9;
+    }
+
+    .filter-btn,
+    .reset-btn,
+    .back-btn {
+        display: inline-block;
+        padding: 11px 17px;
+        border-radius: 7px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+    }
+
+    .filter-btn {
+        background: #0866d9;
+        color: white;
+    }
+
+    .filter-btn:hover {
+        background: #0754b3;
+        color: white;
+    }
+
+    .reset-btn {
+        background: #edf0f5;
+        color: #526078;
+    }
+
+    .back-btn {
+        background: #e9efff;
+        color: #0866d9;
+    }
+
+    .records-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .records-header h3 {
+        margin: 0;
+    }
+
+    .record-count {
+        font-size: 13px;
+        color: #7b8495;
+    }
+
+    .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .report-table {
+        width: 100%;
+        min-width: 950px;
+        border-collapse: collapse;
+    }
+
+    .report-table th {
+        background: #f5f7fb;
+        color: #526078;
+        padding: 13px 12px;
+        text-align: left;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .report-table td {
+        padding: 14px 12px;
+        border-bottom: 1px solid #edf0f5;
+        color: #526078;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .report-table tbody tr:hover {
+        background: #f9fbff;
+    }
+
+    .plate-number {
+        font-weight: 700;
+        color: #172b4d;
+    }
+
+    .payment-method {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 20px;
+        background: #e9efff;
+        color: #0866d9;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .amount {
+        color: #16834a;
+        font-weight: 700;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 15px;
+        color: #8993a5;
+        font-size: 14px;
+    }
+
+    .pagination-wrapper {
+        margin-top: 20px;
+    }
+
+    .validation-error {
+        color: #dc3545;
+        font-size: 12px;
+        margin-top: 6px;
+    }
+
+    @media(max-width: 600px) {
+        .filter-group {
+            width: 100%;
         }
-    </style>
-</head>
-<body>
-<div class="container">
-    <div class="no-print">
-        <a href="{{ route('reports.index') }}">Reports</a> |
-        <a href="{{ route('payments.index') }}">Payments</a> |
-        <a href="{{ route('parking.index') }}">Parking</a>
+
+        .filter-form > a,
+        .filter-form > button {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+
+<div class="report-heading">
+    <h2>Payment Report</h2>
+    <p>Monitor payment transactions and revenue collected from parking activities.</p>
+</div>
+
+<div class="summary-card">
+    <div class="summary-label">Total Revenue</div>
+    <div class="summary-amount">
+        ₱{{ number_format((float) $totalRevenue, 2) }}
     </div>
+</div>
 
-    <h1>Payment Revenue Report</h1>
-    <p>Filter payments by the date they were recorded as paid.</p>
+<div class="filter-panel">
 
-    <form method="GET" action="{{ route('reports.payments') }}" class="no-print">
-        <label>From:
-            <input type="date" name="date_from" value="{{ $validated['date_from'] ?? '' }}">
-        </label>
-        <label>To:
-            <input type="date" name="date_to" value="{{ $validated['date_to'] ?? '' }}">
-        </label>
-        <button type="submit">Filter</button>
-        <a href="{{ route('reports.payments') }}">Reset</a>
-        <button type="button" class="print-button" onclick="window.print()">Print Report</button>
+    <h3>Filter Payment Transactions</h3>
+
+    <form action="{{ route('reports.payments') }}" method="GET" class="filter-form">
+
+        <div class="filter-group">
+            <label for="date_from">Date From</label>
+            <input
+                type="date"
+                name="date_from"
+                id="date_from"
+                value="{{ $validated['date_from'] ?? '' }}"
+            >
+
+            @error('date_from')
+                <span class="validation-error">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <div class="filter-group">
+            <label for="date_to">Date To</label>
+            <input
+                type="date"
+                name="date_to"
+                id="date_to"
+                value="{{ $validated['date_to'] ?? '' }}"
+            >
+
+            @error('date_to')
+                <span class="validation-error">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <button type="submit" class="filter-btn">
+            Apply Filter
+        </button>
+
+        <a href="{{ route('reports.payments') }}" class="reset-btn">
+            Reset
+        </a>
+
+        <a href="{{ route('reports.index') }}" class="back-btn">
+            Back to Reports
+        </a>
+
     </form>
 
-    @if ($errors->any())
-        <p style="color: #b91c1c;">{{ $errors->first() }}</p>
-    @endif
+</div>
 
-    <div class="summary">
-        <h2>Total Revenue: ₱{{ number_format((float) $totalRevenue, 2) }}</h2>
-        <p>Payments in this report: {{ $payments->total() }}</p>
+<div class="records-panel">
+
+    <div class="records-header">
+        <h3>Payment Transactions</h3>
+
+        <span class="record-count">
+            Total Transactions: {{ $payments->total() }}
+        </span>
     </div>
 
-    <table>
-        <thead>
-        <tr>
-            <th>Payment ID</th>
-            <th>Plate Number</th>
-            <th>Owner</th>
-            <th>Parking Slot</th>
-            <th>Amount</th>
-            <th>Method</th>
-            <th>Paid At</th>
-        </tr>
-        </thead>
-        <tbody>
-        @forelse ($payments as $payment)
-            <tr>
-                <td>{{ $payment->id }}</td>
-                <td>{{ $payment->parkingRecord->vehicle->plate_number }}</td>
-                <td>{{ $payment->parkingRecord->vehicle->owner_name }}</td>
-                <td>{{ $payment->parkingRecord->parkingSlot->slot_number }}</td>
-                <td>₱{{ number_format((float) $payment->amount, 2) }}</td>
-                <td>{{ $payment->payment_method }}</td>
-                <td>{{ $payment->paid_at->format('M d, Y h:i A') }}</td>
-            </tr>
-        @empty
-            <tr><td colspan="7">No payments found for this date range.</td></tr>
-        @endforelse
-        </tbody>
-    </table>
+    <div class="table-wrapper">
 
-    <div class="no-print">{{ $payments->links() }}</div>
+        <table class="report-table">
+
+            <thead>
+                <tr>
+                    <th>Payment ID</th>
+                    <th>Plate Number</th>
+                    <th>Vehicle Owner</th>
+                    <th>Parking Slot</th>
+                    <th>Payment Method</th>
+                    <th>Payment Date</th>
+                    <th>Amount Paid</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                @forelse($payments as $payment)
+
+                    <tr>
+                        <td>
+                            #{{ $payment->id }}
+                        </td>
+
+                        <td class="plate-number">
+                            {{ $payment->parkingRecord?->vehicle?->plate_number ?? 'N/A' }}
+                        </td>
+
+                        <td>
+                            {{ $payment->parkingRecord?->vehicle?->owner_name ?? 'N/A' }}
+                        </td>
+
+                        <td>
+                            {{ $payment->parkingRecord?->parkingSlot?->slot_number ?? 'N/A' }}
+                        </td>
+
+                        <td>
+                            <span class="payment-method">
+                                {{ $payment->payment_method }}
+                            </span>
+                        </td>
+
+                        <td>
+                            {{ $payment->paid_at?->format('M d, Y h:i A') ?? 'N/A' }}
+                        </td>
+
+                        <td class="amount">
+                            ₱{{ number_format((float) $payment->amount, 2) }}
+                        </td>
+                    </tr>
+
+                @empty
+
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            No payment transactions found.
+                        </td>
+                    </tr>
+
+                @endforelse
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <div class="pagination-wrapper">
+        {{ $payments->links() }}
+    </div>
+
 </div>
-</body>
-</html>
+
+@endsection
