@@ -92,25 +92,35 @@
                             </td>
 
                             <td>
-                                <div class="action-buttons">
-                                    <a href="{{ route('staff.edit', $member) }}"
-                                       class="edit-btn">
-                                        Edit
-                                    </a>
+                            <div class="action-buttons">
+                                <a href="{{ route('staff.edit', $member) }}" class="edit-btn">
+                                    Edit
+                                </a>
 
-                                    <form
-                                        action="{{ route('staff.destroy', $member) }}"
-                                        method="POST"
-                                        onsubmit="return confirm('Are you sure you want to delete this staff account?');"
-                                    >
-                                        @csrf
-                                        @method('DELETE')
+                                <form action="{{ route('staff.toggle-status', $member) }}"
+                                    method="POST"
+                                    style="display: inline;">
+                                    @csrf
+                                    @method('PATCH')
 
-                                        <button type="submit" class="delete-btn">
-                                            Delete
-                                        </button>
-                                    </form>
-                                </div>
+                                    <button type="submit"
+                                            class="{{ $member->is_active ? 'delete-btn' : 'edit-btn' }}">
+                                        {{ $member->is_active ? 'Deactivate' : 'Activate' }}
+                                    </button>
+                                </form>
+
+                                <form action="{{ route('staff.destroy', $member) }}"
+                                    method="POST"
+                                    style="display: inline;"
+                                    onsubmit="return confirm('Are you sure you want to delete this staff account?');">
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button type="submit" class="delete-btn">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
                             </td>
                         </tr>
                     @empty

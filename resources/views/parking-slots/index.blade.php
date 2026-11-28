@@ -49,11 +49,15 @@
         <p>Manage and monitor all parking spaces in your parking area.</p>
     </div>
 
-    <div>
-        <a href="{{ route('parking-slots.index') }}" class="secondary-btn">
-            ↻ Refresh
-        </a>
-    </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="{{ route('parking-slots.create') }}" class="primary-btn">
+                + Add Parking Slot
+            </a>
+
+            <a href="{{ route('parking-slots.index') }}" class="secondary-btn">
+                ↻ Refresh
+            </a>
+        </div>
 </div>
 
 <!-- SUMMARY CARDS -->
